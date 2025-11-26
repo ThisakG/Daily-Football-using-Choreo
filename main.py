@@ -1,4 +1,5 @@
 import os
+import time
 import requests
 import smtplib
 from email.mime.text import MIMEText
@@ -6,30 +7,39 @@ from datetime import datetime
 
 # --- Config from environment ---
 API_KEY = os.environ.get("FOOTBALL_API_KEY")
-LEAGUES = ["PL","PD","SA","BL1","FL1","MLS", "CL"]
+LEAGUES = os.environ.get("LEAGUES", "PL,PD,SA,BL1,FL1,MLS,CL").split(",")
 EMAIL_TO = os.environ.get("EMAIL_TO")
 EMAIL_FROM = os.environ.get("EMAIL_FROM")
 SMTP_SERVER = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.environ.get("SMTP_PORT", 587))
 SMTP_PASS = os.environ.get("SMTP_PASS")
 
-# --- Fetch matches ---
+# --- Input validation ---
 today = datetime.today().strftime('%Y-%m-%d')
-matches_by_league = {}
 
+# Validate date format
+try:
+    datetime.strptime(today, "%Y-%m-%d")
+except ValueError:
+    raise ValueError(f"Invalid date format: {today}")
+
+# Validate leagues
+ALLOWED_LEAGUES = ["PL","PD","SA","BL1","FL1","MLS", "CL"]
+for league in LEAGUES:
+    if league not in ALLOWED_LEAGUES:
+        raise ValueError(f"Invalid league code: {league}")
+
+# --- Fetch matches with rate limiting ---
+matches_by_league = {}
 for league in LEAGUES:
     url = f"https://api.football-data.org/v2/matches?competitions={league}&dateFrom={today}&dateTo={today}"
     headers = {"X-Auth-Token": API_KEY}
     response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        matches = response.json().get("matches", [])
-        matches_by_league[league] = matches
-    else:
-        matches_by_league[league] = []
+    matches_by_league[league] = response.json().get("matches", []) if response.status_code == 200 else []
+    time.sleep(1)  # Rate limiting: wait 1 second between requests
 
 # --- Format HTML email ---
 html_body = "<h2>⚽ Today's Football Matches</h2>"
-
 for league, matches in matches_by_league.items():
     html_body += f"<h3>{league}</h3>"
     if not matches:
@@ -39,9 +49,9 @@ for league, matches in matches_by_league.items():
     for match in matches:
         home = match['homeTeam']['name']
         away = match['awayTeam']['name']
-        time = match['utcDate'].split("T")[1][:5]  # HH:MM
+        time_str = match['utcDate'].split("T")[1][:5]
         style = " style='color:red;font-weight:bold;'" if "Barcelona" in (home, away) else ""
-        html_body += f"<tr{style}><td>{time}</td><td>{home}</td><td>{away}</td></tr>"
+        html_body += f"<tr{style}><td>{time_str}</td><td>{home}</td><td>{away}</td></tr>"
     html_body += "</table>"
 
 # --- Send Email ---
