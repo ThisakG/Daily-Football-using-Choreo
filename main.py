@@ -1,3 +1,4 @@
+# importing required libraries
 import os
 import time
 import requests
@@ -5,44 +6,45 @@ import smtplib
 from email.mime.text import MIMEText
 from datetime import datetime
 
-# --- Config from environment ---
-API_KEY = os.environ.get("FOOTBALL_API_KEY")
-LEAGUES = os.environ.get("LEAGUES", "PL,PD,SA,BL1,FL1,MLS,CL").split(",")
-EMAIL_TO = os.environ.get("EMAIL_TO")
-EMAIL_FROM = os.environ.get("EMAIL_FROM")
-SMTP_SERVER = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
-SMTP_PORT = int(os.environ.get("SMTP_PORT", 587))
-SMTP_PASS = os.environ.get("SMTP_PASS")
+# Configurations from environment
+API_KEY = os.environ.get("FOOTBALL_API_KEY") # football news API via https://www.football-data.org/
+LEAGUES = os.environ.get("LEAGUES", "PL,PD,SA,BL1,FL1,MLS,CL").split(",") # the required leauges
+EMAIL_TO = os.environ.get("EMAIL_TO") # to whom the mail is sent
+EMAIL_FROM = os.environ.get("EMAIL_FROM") # sender of the mail
+SMTP_SERVER = os.environ.get("SMTP_SERVER", "smtp.gmail.com") # email service
+SMTP_PORT = int(os.environ.get("SMTP_PORT", 587)) # service port
+SMTP_PASS = os.environ.get("SMTP_PASS") # service password obtained through google account app passwords
 
-# --- Input validation ---
+# getting the date
 today = datetime.today().strftime('%Y-%m-%d')
 
-# Validate date format
+# Validating date format
 try:
     datetime.strptime(today, "%Y-%m-%d")
 except ValueError:
     raise ValueError(f"Invalid date format: {today}")
 
-# Validate leagues
+# Validating required leagues
 ALLOWED_LEAGUES = ["PL","PD","SA","BL1","FL1","MLS", "CL"]
 for league in LEAGUES:
     if league not in ALLOWED_LEAGUES:
         raise ValueError(f"Invalid league code: {league}")
 
-# --- Fetch matches with rate limiting ---
+# fetching the matches with reate limiting implemented
 matches_by_league = {}
 for league in LEAGUES:
     url = f"https://api.football-data.org/v2/matches?competitions={league}&dateFrom={today}&dateTo={today}"
     headers = {"X-Auth-Token": API_KEY}
     response = requests.get(url, headers=headers)
     matches_by_league[league] = response.json().get("matches", []) if response.status_code == 200 else []
-    time.sleep(1)  # Rate limiting: wait 1 second between requests
+    time.sleep(1) # waiting 1 second between requests
 
-# --- Format HTML email ---
+# HTML format to be set on email body
 html_body = "<h2>⚽ Today's Football Matches</h2>"
 for league, matches in matches_by_league.items():
     html_body += f"<h3>{league}</h3>"
     if not matches:
+        # adding response message if no matches present today
         html_body += "<p>No matches today.</p>"
         continue
     html_body += "<table border='1' cellpadding='5' cellspacing='0'><tr><th>Time</th><th>Home</th><th>Away</th></tr>"
@@ -54,7 +56,7 @@ for league, matches in matches_by_league.items():
         html_body += f"<tr{style}><td>{time_str}</td><td>{home}</td><td>{away}</td></tr>"
     html_body += "</table>"
 
-# --- Send Email ---
+# seding email with obtained match info
 msg = MIMEText(html_body, "html")
 msg['Subject'] = f"Daily Football Update - {today}"
 msg['From'] = EMAIL_FROM
@@ -65,4 +67,5 @@ with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
     server.login(EMAIL_FROM, SMTP_PASS)
     server.sendmail(EMAIL_FROM, [EMAIL_TO], msg.as_string())
 
+# print message on logs upon successful task execution
 print("Daily Football email sent!")
