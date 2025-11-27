@@ -50,6 +50,8 @@ Choreo runs this script automatically on a schedule so you receive daily match s
 
 ## 👾 Security Features
 
+<p>As a Cybersecurity undergrad, I wanted this workflow to follow good security practices rather than just “function correctly.” To strengthen the reliability and safety of the solution, the below listed mechanisms were added:</p>
+
 ### 1. Secrets Handling
 - API keys, SMTP credentials, and all sensitive values are **not hardcoded**. Instead they're stored in the Choreo environment variables and are toggled as **secrets**, which encrypt and protect the data.
 
