@@ -6,13 +6,13 @@ from datetime import datetime, timedelta
 from time import sleep
 
 # --- Config ---
-API_KEY = os.environ.get("API_KEY")
-LEAGUES = ["PL","PD","SA","BL1","FL1","MLS", "CL"]
-EMAIL_TO = os.environ.get("EMAIL_TO")
-EMAIL_FROM = os.environ.get("EMAIL_FROM")
-SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 587
-SMTP_PASS = os.environ.get("SMTP_PASS")
+API_KEY = os.environ.get("FOOTBALL_API_KEY") # football news API via https://www.football-data.org/
+LEAGUES = os.environ.get("LEAGUES", "PL,PD,SA,BL1,FL1,MLS,CL").split(",") # the required leauges
+EMAIL_TO = os.environ.get("EMAIL_TO") # to whom the mail is sent
+EMAIL_FROM = os.environ.get("EMAIL_FROM") # sender of the mail
+SMTP_SERVER = os.environ.get("SMTP_SERVER", "smtp.gmail.com") # email service
+SMTP_PORT = int(os.environ.get("SMTP_PORT", 587)) # service port
+SMTP_PASS = os.environ.get("SMTP_PASS") # service password obtained through google account app passwords
 
 # Validate required values
 if not API_KEY or not SMTP_PASS:
