@@ -1,10 +1,27 @@
-# Daily Football Email Updates
+# Daily Football Email Updates ⚽
+<p>
+As an avid football fan, I always do my best to keep up with all the matches that will happen throughout the week mainly through social media, and a couple of footballing apps in my phone. 
+Now, it's all fun and games when you have the time to scroll through five or so different apps, but not so much when you start to miss out on match info since life keeps you busy with uni assignments and other committments.   
+</p>
 
-This Python project automatically fetches football match data from multiple leagues and emails a daily summary in a clean HTML format. It is designed to run as a **Scheduled Task** in WSO2 Choreo and includes security and reliability features such as rate limiting and input validation.
+<p>
+I do not like missing out on the action at all. So as a solution to keep myself updated daily on that matches that will be played on that day, 
+I created a scheduled task workflow using WSO2's Choreo: a cloud-native integration and development platform. 
+This workflow uses a custom python script automatically fetches football match data from multiple leagues and emails a daily summary in a clean HTML format
+</p>
+<br>
+<p>
+🧐What the python script does:
+</p>
+<p>
+The script fetches today’s football matches from an API for several leagues, formats the results into a clean HTML email, and highlights important matches. 
+It then connects to an SMTP server using secure credentials and sends the formatted update to your email. 
+Choreo runs this script automatically on a schedule so you receive daily match summaries without the need for manual configration.
+</p>
 
 ---
 
-## Features
+## 👓 Features
 
 - Fetches daily football matches from multiple leagues:
   - Premier League (PL)
@@ -31,15 +48,14 @@ This Python project automatically fetches football match data from multiple leag
 
 ---
 
-## Security Features
+## 👾 Security Features
 
 ### 1. Secrets Handling
-- API keys, SMTP credentials, and all sensitive values are **not hardcoded**.
-- Choreo environment variables are toggled as **secrets**, which encrypt and protect the data.
+- API keys, SMTP credentials, and all sensitive values are **not hardcoded**. Instead they're stored in the Choreo environment variables and are toggled as **secrets**, which encrypt and protect the data.
 
 ### 2. Rate Limiting
 - A delay is added between API calls to avoid exceeding allowed request quotas.
-- Helps prevent accidental API abuse.
+- This Helps prevent accidental API abuse.
 
 ### 3. Input Validation
 - Date format (`YYYY-MM-DD`) is validated before making requests.
@@ -47,7 +63,7 @@ This Python project automatically fetches football match data from multiple leag
 
 ---
 
-## Setup & Local Testing
+## ⚒ Setup & Local Testing
 
 ### 1. Clone the repository
 
