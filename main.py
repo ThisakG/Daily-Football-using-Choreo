@@ -1,74 +1,70 @@
-import os # provide access to environment variables and OS
-import time # providing time related functions
-import requests # providing HTTP requests
-import smtplib # library that provides SMTP service
-from email.mime.text import MIMEText # providing email handling functions
-from datetime import datetime, timedelta # providing date and time (UTC) 
+import os
+import time
+import requests
+import smtplib
+from email.mime.text import MIMEText
+from datetime import datetime, timedelta
 
-# --- Config from Choreo environment variables ---
-API_KEY = os.environ.get("FOOTBALL_API_KEY") # football news API via https://www.football-data.org/
-SMTP_PASS = os.environ.get("SMTP_PASS") # service password obtained through google account app passwords
-EMAIL_TO = os.environ.get("EMAIL_TO")  # to whom the mail is sent
-EMAIL_FROM = os.environ.get("EMAIL_FROM") # sender of the mail
-SMTP_SERVER = os.environ.get("SMTP_SERVER", "smtp.gmail.com") # email service
-SMTP_PORT = int(os.environ.get("SMTP_PORT", 587)) # service port
-LEAGUES = ["PL","PD","SA","BL1","FL1","MLS", "CL"] # the required leauges
+# --- Email Config ---
+SMTP_PASS = os.environ.get("SMTP_PASS")
+EMAIL_TO = os.environ.get("EMAIL_TO")
+EMAIL_FROM = os.environ.get("EMAIL_FROM")
+SMTP_SERVER = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", 587))
 
-# Date range – FIXED
+if not SMTP_PASS:
+    raise ValueError("Missing SMTP_PASS")
+
+# FOTMob league IDs
+LEAGUES = {
+    "PL": 47,
+    "PD": 87,
+    "SA": 55,
+    "BL1": 54,
+    "FL1": 53,
+    "MLS": 186,
+    "CL": 42
+}
+
+# Today's date (UTC)
 today = datetime.utcnow().date()
 today_str = today.strftime("%Y-%m-%d")
-tomorrow_str = (today + timedelta(days=1)).strftime("%Y-%m-%d")
-
-if not API_KEY or not SMTP_PASS:
-    raise ValueError("Missing FOOTBALL_API_KEY or SMTP_PASS in environment variables")
-
-ALLOWED_LEAGUES = ["PL", "PD", "SA", "BL1", "FL1", "MLS", "CL"]
-for league in LEAGUES:
-    if league not in ALLOWED_LEAGUES:
-        raise ValueError(f"Invalid league code: {league}")
 
 matches_by_league = {}
-now_utc = datetime.utcnow()
 
-for league in LEAGUES:
-    url = (
-        f"https://api.football-data.org/v4/matches?"
-        f"competitions={league}&dateFrom={today_str}&dateTo={tomorrow_str}"
-    )
-    headers = {"X-Auth-Token": API_KEY}
+for code, league_id in LEAGUES.items():
 
+    url = f"https://www.fotmob.com/api/leagues?id={league_id}&ccode=WW"
+    
     try:
-        response = requests.get(url, headers=headers, timeout=12)
+        r = requests.get(url, timeout=10)
+        r.raise_for_status()
+        data = r.json()
 
-        if response.status_code == 429:
-            print(f"[RATE LIMIT] League {league} was rate-limited.")
-            matches_by_league[league] = []
-            continue
+        fixtures = data["matches"]["allMatches"]
+        upcoming = []
 
-        response.raise_for_status()
-        data = response.json()
+        now_utc = datetime.utcnow()
 
-        all_matches = data.get("matches", [])
+        for m in fixtures:
+            if "time" not in m:
+                continue
+            if "utcTime" not in m["time"]:
+                continue
 
-        # Debug print
-        print(f"[DEBUG] {league}: API returned {len(all_matches)} matches.")
+            kickoff = datetime.fromisoformat(m["time"]["utcTime"].replace("Z", "+00:00"))
 
-        upcoming_matches = []
-        for match in all_matches:
-            match_time = datetime.fromisoformat(
-                match["utcDate"].replace("Z", "+00:00")
-            )
-            if match_time >= now_utc:
-                upcoming_matches.append(match)
+            # Only future matches today
+            if kickoff.date() == today and kickoff >= now_utc:
+                upcoming.append((m, kickoff))
 
-        matches_by_league[league] = upcoming_matches
+        matches_by_league[code] = upcoming
 
     except Exception as e:
-        print(f"[ERROR] League {league} fetch failed:", e)
-        matches_by_league[league] = []
+        print(f"[ERROR] Could not fetch league {code}: {e}")
+        matches_by_league[code] = []
 
-    time.sleep(1)  # rate-limit friendly   # waiting 1 second between requests
-
+    time.sleep(1)
 # HTML format to be set on email body
 html_body = f"<h2>⚽ Upcoming Football Matches for {today_str}</h2>"
 
