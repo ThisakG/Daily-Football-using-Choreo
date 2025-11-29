@@ -1,4 +1,5 @@
 import os
+import time
 import requests
 import smtplib
 from email.mime.text import MIMEText
@@ -10,20 +11,16 @@ EMAIL_TO = os.environ.get("EMAIL_TO")
 EMAIL_FROM = os.environ.get("EMAIL_FROM")
 SMTP_SERVER = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.environ.get("SMTP_PORT", 587))
-API_KEY = os.environ.get("API_FOOTBALL_KEY")  # Get from RapidAPI
+API_KEY = os.environ.get("API_FOOTBALL_KEY")  # RapidAPI key
 
 if not SMTP_PASS or not API_KEY:
     raise ValueError("Missing SMTP_PASS or API_FOOTBALL_KEY")
 
-# League IDs (API-Football)
+# League IDs (API-Football) - reduced to 3 leagues
 LEAGUES = {
-    "PL": 39,    # Premier League
-    "PD": 140,   # La Liga
-    "SA": 135,   # Serie A
-    "BL1": 78,   # Bundesliga
-    "FL1": 61,   # Ligue 1
-    "MLS": 253,  # Major League Soccer
-    "CL": 2      # UEFA Champions League
+    "PL": 39,   # Premier League
+    "PD": 140,  # La Liga
+    "CL": 2     # UEFA Champions League
 }
 
 # UTC now and today/tomorrow range
@@ -32,44 +29,55 @@ today_start = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
 tomorrow_start = today_start + timedelta(days=1)
 
 matches_by_league = {}
-
-# API-Football headers
 headers = {
     "X-RapidAPI-Key": API_KEY,
     "X-RapidAPI-Host": "api-football-v1.p.rapidapi.com"
 }
 
 for code, league_id in LEAGUES.items():
-    url = f"https://api-football-v1.p.rapidapi.com/v3/fixtures?league={league_id}&season=2025&from={today_start.isoformat()}&to={tomorrow_start.isoformat()}"
+    url = f"https://api-football-v1.p.rapidapi.com/v3/fixtures?league={league_id}&season={datetime.utcnow().year}&from={today_start.isoformat()}&to={tomorrow_start.isoformat()}"
     
-    try:
-        r = requests.get(url, headers=headers, timeout=10)
-        r.raise_for_status()
-        data = r.json()
-        matches = data.get("response", [])
-        
-        print(f"\n[DEBUG] {code}: API returned {len(matches)} total matches")
-        print(f"[DEBUG] Search window: {today_start.isoformat()} to {tomorrow_start.isoformat()}")
-        print(f"[DEBUG] Current UTC time: {now_utc.isoformat()}")
-        
-        upcoming = []
-        for m in matches:
-            kickoff_str = m["fixture"]["date"]
-            kickoff = datetime.fromisoformat(kickoff_str.replace("Z","+00:00")).replace(tzinfo=timezone.utc)
+    retry_count = 0
+    while retry_count < 3:
+        try:
+            r = requests.get(url, headers=headers, timeout=10)
+            r.raise_for_status()
+            data = r.json()
+            matches = data.get("response", [])
+
+            upcoming = []
+            for m in matches:
+                kickoff_str = m["fixture"]["date"]  # ISO UTC
+                kickoff = datetime.fromisoformat(kickoff_str.replace("Z","+00:00")).replace(tzinfo=timezone.utc)
+                
+                if now_utc <= kickoff < tomorrow_start:
+                    home = m["teams"]["home"]["name"]
+                    away = m["teams"]["away"]["name"]
+                    upcoming.append((home, away, kickoff))
             
-            print(f"[DEBUG] Match: {m['teams']['home']['name']} vs {m['teams']['away']['name']} at {kickoff.isoformat()}")
-            print(f"[DEBUG] Passes filter? now_utc <= kickoff < tomorrow_start: {now_utc} <= {kickoff} < {tomorrow_start} = {now_utc <= kickoff < tomorrow_start}")
-            
-            if now_utc <= kickoff < tomorrow_start:
-                home = m["teams"]["home"]["name"]
-                away = m["teams"]["away"]["name"]
-                upcoming.append((home, away, kickoff))
-        
-        print(f"[DEBUG] {code}: {len(upcoming)} matches passed the filter")
-        matches_by_league[code] = upcoming
-    except Exception as e:
-        print(f"[ERROR] Could not fetch {code}: {e}")
-        matches_by_league[code] = []
+            matches_by_league[code] = upcoming
+            break  # success, exit retry loop
+
+        except requests.exceptions.HTTPError as e:
+            if r.status_code == 429:  # Too Many Requests
+                retry_count += 1
+                wait_time = 2 ** retry_count  # exponential backoff
+                print(f"[WARNING] 429 Too Many Requests for {code}, retrying in {wait_time}s...")
+                time.sleep(wait_time)
+            elif r.status_code == 403:  # Forbidden
+                print(f"[ERROR] 403 Forbidden for {code}, skipping league.")
+                matches_by_league[code] = []
+                break
+            else:
+                print(f"[ERROR] Could not fetch {code}: {e}")
+                matches_by_league[code] = []
+                break
+        except Exception as e:
+            print(f"[ERROR] Could not fetch {code}: {e}")
+            matches_by_league[code] = []
+            break
+
+    time.sleep(2)  # rate limiting between leagues
 
 # Build HTML email
 today_str = now_utc.strftime("%Y-%m-%d")
