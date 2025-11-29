@@ -40,7 +40,7 @@ headers = {
 }
 
 for code, league_id in LEAGUES.items():
-    url = f"https://api-football-v1.p.rapidapi.com/v3/fixtures?league={league_id}&season={datetime.utcnow().year}&from={today_start.isoformat()}&to={tomorrow_start.isoformat()}"
+    url = f"https://api-football-v1.p.rapidapi.com/v3/fixtures?league={league_id}&season=2025&from={today_start.isoformat()}&to={tomorrow_start.isoformat()}"
     
     try:
         r = requests.get(url, headers=headers, timeout=10)
@@ -48,19 +48,25 @@ for code, league_id in LEAGUES.items():
         data = r.json()
         matches = data.get("response", [])
         
+        print(f"\n[DEBUG] {code}: API returned {len(matches)} total matches")
+        print(f"[DEBUG] Search window: {today_start.isoformat()} to {tomorrow_start.isoformat()}")
+        print(f"[DEBUG] Current UTC time: {now_utc.isoformat()}")
+        
         upcoming = []
         for m in matches:
-            kickoff_str = m["fixture"]["date"]  # ISO format UTC
+            kickoff_str = m["fixture"]["date"]
             kickoff = datetime.fromisoformat(kickoff_str.replace("Z","+00:00")).replace(tzinfo=timezone.utc)
             
-            # Only include matches from now until the end of today UTC
+            print(f"[DEBUG] Match: {m['teams']['home']['name']} vs {m['teams']['away']['name']} at {kickoff.isoformat()}")
+            print(f"[DEBUG] Passes filter? now_utc <= kickoff < tomorrow_start: {now_utc} <= {kickoff} < {tomorrow_start} = {now_utc <= kickoff < tomorrow_start}")
+            
             if now_utc <= kickoff < tomorrow_start:
                 home = m["teams"]["home"]["name"]
                 away = m["teams"]["away"]["name"]
                 upcoming.append((home, away, kickoff))
         
+        print(f"[DEBUG] {code}: {len(upcoming)} matches passed the filter")
         matches_by_league[code] = upcoming
-
     except Exception as e:
         print(f"[ERROR] Could not fetch {code}: {e}")
         matches_by_league[code] = []
