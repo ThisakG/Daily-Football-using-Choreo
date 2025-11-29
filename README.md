@@ -16,7 +16,7 @@ This workflow uses a custom python script automatically fetches football match d
 <p>
 The script fetches today’s football matches from an API for several leagues, formats the results into a clean HTML email, and highlights important matches. 
 It then connects to an SMTP server using secure credentials and sends the formatted update to your email. 
-Choreo runs this script automatically on a schedule so you receive daily match summaries without the need for manual configration.
+Choreo runs this script automatically on a schedule so you receive daily match summaries without the need for manual configuration.
 </p>
 <br>
 <p>
