@@ -7,7 +7,7 @@ Now, it's all fun and games when you have the time to scroll through five or so 
 <p>
 I do not like missing out on the action at all. So as a solution to keep myself updated daily on that matches that will be played on that day, 
 I created a scheduled task workflow using WSO2's Choreo: a cloud-native integration and development platform. 
-This workflow uses a custom python script automatically fetches football match data from multiple leagues and emails a daily summary in a clean HTML format
+This workflow uses a custom python script that automatically fetches football match data from multiple leagues and emails a daily summary in a clean HTML format
 </p>
 <br>
 <p>
@@ -27,7 +27,7 @@ Choreo Dashboard: https://console.choreo.dev/organizations/footballmail/projects
 
 ## 👓 Features
 
-- Fetches daily football matches from multiple leagues:
+- Fetches daily upcoming fixtures from multiple leagues using FOTMob’s public API (no API key needed):
   - Premier League (PL)
   - La Liga (PD)
   - Serie A (SA)
@@ -57,7 +57,7 @@ Choreo Dashboard: https://console.choreo.dev/organizations/footballmail/projects
 <p>As a Cybersecurity undergrad, I wanted this workflow to follow good security practices rather than just “function correctly.” To strengthen the reliability and safety of the solution, the below listed mechanisms were added:</p>
 
 ### 1. Secrets Handling
-- API keys, SMTP credentials, and all sensitive values are **not hardcoded**. Instead they're stored in the Choreo environment variables and are toggled as **secrets**, which encrypt and protect the data.
+- SMTP credentials and all sensitive values are not hardcoded. Instead they're stored in the Choreo environment variables and are toggled as secrets, which encrypt and protect the data.
 
 ### 2. Rate Limiting
 - A delay is added between API calls to avoid exceeding allowed request quotas.
