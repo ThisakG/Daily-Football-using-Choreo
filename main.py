@@ -5,7 +5,7 @@ import smtplib
 from email.mime.text import MIMEText
 from datetime import datetime
 
-# --- Config ---
+# environmental variables
 API_KEY = os.environ.get("FOOTBALL_API_KEY")  # Football-Data.org free API key
 SMTP_PASS = os.environ.get("SMTP_PASS")
 EMAIL_TO = os.environ.get("EMAIL_TO")
@@ -13,7 +13,7 @@ EMAIL_FROM = os.environ.get("EMAIL_FROM")
 SMTP_SERVER = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.environ.get("SMTP_PORT", 587))
 
-# Leagues to fetch (you have access on free plan)
+# Leagues to fetch 
 LEAGUES = {
     "PL": "PL",   # Premier League
     "PD": "PD",   # La Liga
@@ -30,7 +30,7 @@ today_str = today_utc.isoformat()
 
 matches_by_league = {}
 
-# --- Fetch matches ---
+# fetching match details
 for code, league in LEAGUES.items():
     url = f"https://api.football-data.org/v4/competitions/{league}/matches?dateFrom={today_str}&dateTo={today_str}"
     headers = {"X-Auth-Token": API_KEY}
@@ -47,14 +47,14 @@ for code, league in LEAGUES.items():
             if match_time >= now_utc:
                 matches.append(match)
         matches_by_league[code] = matches
-
+    # if any errors show on logs
     except Exception as e:
         print(f"[ERROR] Could not fetch {code}: {e}")
         matches_by_league[code] = []
 
     time.sleep(1)  # avoid hitting rate limits
 
-# --- Prepare email ---
+# HTML formatting to add in email 
 html_body = f"<h2>⚽ Upcoming Football Matches for {today_str}</h2>"
 
 for league, matches in matches_by_league.items():
@@ -71,7 +71,7 @@ for league, matches in matches_by_league.items():
         html_body += f"<li {highlight}>{home} vs {away} — {match_time} UTC</li>"
     html_body += "</ul>"
 
-# --- Send email ---
+# Sending mail
 msg = MIMEText(html_body, "html")
 msg["Subject"] = f"Upcoming Football Matches - {today_str}"
 msg["From"] = EMAIL_FROM
@@ -83,5 +83,6 @@ try:
         server.login(EMAIL_FROM, SMTP_PASS)
         server.sendmail(EMAIL_FROM, [EMAIL_TO], msg.as_string())
     print("Daily Football email sent!")
+# if any errors show on logs
 except Exception as e:
     print(f"[ERROR] Could not send email: {e}")
