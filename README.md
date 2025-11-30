@@ -11,12 +11,18 @@ This workflow uses a custom python script that automatically fetches football ma
 </p>
 <br>
 <p>
-🧐What the python script does:
+🧐How the python script works:
 </p>
 <p>
-The script fetches today’s football matches from an API for several leagues, formats the results into a clean HTML email, and highlights important matches. 
-It then connects to an SMTP server using secure credentials and sends the formatted update to your email. 
-Choreo runs this script automatically on a schedule so you receive daily match summaries without the need for manual configuration.
+1. The script fetches today's matches for required leagues (PL, PD, CL) using Football data-org's free tier API key.
+
+2. Checks the UTC time so only future matches are included.
+
+3. Formats matches into a clean HTML email.
+
+3. Highlights matches with my favorite team (FC Barcelona).
+
+4. Sends the email via SMTP automatically every morning using Choreo.
 </p>
 <br>
 <p>
